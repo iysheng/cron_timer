@@ -150,8 +150,10 @@ void TestCronTimerInMainThread() {
 void TestCronTimerInSubThread() {
 	// 如果你想在子线程中触发定时器事件
 	std::shared_ptr<cron_timer::TimerMgr> mgr = std::make_shared<cron_timer::TimerMgr>([&]() {
-		sleep(1);
-		while (mgr != nullptr) {
+		if (!mgr)
+			return;
+		while(!mgr->MultiThreadsReady());
+		while (1) {
 			// 在子线程中触发定时器事件
 			mgr->Update();
 		}
@@ -199,6 +201,7 @@ void TestCronTimerInSubThread() {
 			Log("10 second delay timer hit");
 		},
 		3);
+	mgr->MarkMultiThreadsReady(true);
 	Log("10 second delay timer added");
 	while (!_shutDown) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));

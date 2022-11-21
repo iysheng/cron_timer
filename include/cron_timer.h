@@ -532,6 +532,14 @@ public:
 		return count;
 	}
 
+	void MarkMultiThreadsReady(bool ready = false) {
+        multi_threads_ready_ = ready;
+	}
+
+	bool MultiThreadsReady()
+	{
+		return multi_threads_ready_;
+	}
 private:
 	void insert(const TimerPtr& p) {
 		assert(!p->GetIsInList());
@@ -584,6 +592,7 @@ private:
 	 * */
 	std::map<std::chrono::system_clock::time_point, std::list<TimerPtr>> timers_;
 	bool stopped_ = false;
+	bool multi_threads_ready_ = false;
 };
 
 void BaseTimer::Cancel() {
