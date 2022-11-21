@@ -266,6 +266,9 @@ struct CronWheel {
 	//返回值：是否有进位
 	bool init(int init_value) {
 		for (size_t i = cur_index; i < values.size(); ++i) {
+			/*
+			 * 如果超时的时点滞后当前时间,直接返回
+			 * */
 			if (values[i] >= init_value) {
 				cur_index = i;
 				return false;
