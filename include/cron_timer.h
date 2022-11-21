@@ -68,6 +68,7 @@ namespace cron_timer {
 class Text {
 public:
 	// 主要用来切分使用空格分隔的字符串，连续的空格算作一个分隔符
+	// 结果存储到 os 指向的 vector 中
 	static size_t SplitStr(std::vector<std::string>& os, const std::string& is, char c) {
 		os.clear();
 		auto start = is.find_first_not_of(c, 0);
@@ -149,9 +150,13 @@ public:
 		static const char CRON_SEPERATOR_RANGE = '-';
 		static const char CRON_SEPERATOR_INTERVAL = '/';
 
+		/* 如果是 * 表示该单位的最小颗粒均执行
+		 * 比如说秒对应的是 *, 表示每一秒都会执行
+		 * */
 		if (input == "*") {
 			auto pair_range = GetRangeFromType(data_type);
 			for (auto i = pair_range.first; i <= pair_range.second; ++i) {
+				/* 压入到向量 */
 				values.push_back(i);
 			}
 		} else if (input.find_first_of(CRON_SEPERATOR_ENUM) != std::string::npos) {
@@ -223,6 +228,7 @@ private:
 		int to = 0;
 
 		switch (data_type) {
+			/* 分和秒的范围是 0-59 */
 		case CronExpression::DT_SECOND:
 		case CronExpression::DT_MINUTE:
 			from = 0;
@@ -271,6 +277,7 @@ struct CronWheel {
 	}
 
 	size_t cur_index;
+	/* 存储的时点 */
 	std::vector<int> values;
 };
 
@@ -454,6 +461,7 @@ public:
 			return nullptr;
 		}
 
+		/* CronWheel 向量 */
 		std::vector<CronWheel> wheels;
 		for (int i = 0; i < CronExpression::DT_MAX; i++) {
 			const auto& expression = v[i];
@@ -464,9 +472,13 @@ public:
 				return nullptr;
 			}
 
+			/* 填充 wheels
+			 * wheels -> 5 个等级(秒,分,时,月,年)的 wheel -> 每一个等级的 wheel 关联有数量不等的颗粒(触发的时间点)
+			 * */
 			wheels.emplace_back(wheel);
 		}
 
+		/* 构造一个 CronTimer 并添加到管理结构体上 */
 		auto p = std::make_shared<CronTimer>(*this, std::move(wheels), std::move(func), count);
 		insert(p);
 		return p;
@@ -499,8 +511,11 @@ public:
 		size_t count = 0;
 
 		for (auto it = timers_.begin(); it != timers_.end();) {
+			/* 获取第一个超时的时点 */
 			auto expire_time = it->first;
+			/* 获取这个时点对应的超时的链表 */
 			auto& timer_list = it->second;
+			/* 如果没有超时则直接跳出 */
 			if (expire_time > time_now) {
 				break;
 			}
@@ -521,16 +536,23 @@ private:
 	void insert(const TimerPtr& p) {
 		assert(!p->GetIsInList());
 
+		/* 获取 p 对应的超时时间,转换为
+		 * td::chrono::system_clock::time_point 格式
+		 * */
 		auto t = p->GetCurTime();
 		auto it = timers_.find(t);
+		/* 如果找不到当前时间,那么追加到的 map */
 		if (it == timers_.end()) {
 			std::list<TimerPtr> l;
 			timers_.insert(std::make_pair(t, l));
 			it = timers_.find(t);
 		}
 
+		/* 获取这个 TimerPtr 的 list */
 		auto& l = it->second;
+		/* 关联 p 自己到这个 list */
 		p->SetIt(l.insert(l.end(), p));
+		/* 标记 p 已经在 list */
 		p->SetIsInList(true);
 	}
 
@@ -557,6 +579,9 @@ private:
 	}
 
 private:
+	/* 当前时间和, 一个 TimerPtr 的链表
+	 * 组成的 map
+	 * */
 	std::map<std::chrono::system_clock::time_point, std::list<TimerPtr>> timers_;
 	bool stopped_ = false;
 };
